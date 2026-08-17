@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variable System for Light and Dark themes */
+:root {
+  --bg-color: #030712;
+  --bg-radial-1: rgba(99, 102, 241, 0.1);
+  --bg-radial-2: rgba(168, 85, 247, 0.1);
+  --text-color: #f3f4f6;
+  --glass-bg: rgba(17, 24, 39, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --scrollbar-track: rgba(17, 24, 39, 0.5);
+}
+
+html.light {
+  --bg-color: #f3f4f6;
+  --bg-radial-1: rgba(99, 102, 241, 0.04);
+  --bg-radial-2: rgba(168, 85, 247, 0.04);
+  --text-color: #1f2937;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --scrollbar-track: rgba(255, 255, 255, 0.5);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-color);
+    background-image: radial-gradient(at 0% 0%, var(--bg-radial-1) 0px, transparent 50%),
+                      radial-gradient(at 100% 100%, var(--bg-radial-2) 0px, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Glassmorphism Classes */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-hover:hover {
+  background: rgba(17, 24, 39, 0.85);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+html.light .glass-hover:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* Global Light Mode CSS Overrides */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #111827 !important;
+}
+
+html.light .text-white,
+html.light .text-gray-100,
+html.light .text-gray-200,
+html.light .text-gray-300 {
+  color: #1f2937 !important;
+}
+
+html.light .text-gray-400,
+html.light .text-gray-500 {
+  color: #4b5563 !important;
+}
+
+html.light .bg-gray-900,
+html.light .bg-gray-950,
+html.light .bg-black {
+  background-color: #e5e7eb !important;
+}
+
+html.light .bg-gray-900\/60,
+html.light .bg-gray-900\/30,
+html.light .bg-gray-900\/40,
+html.light .bg-gray-800\/60,
+html.light .bg-gray-800\/80,
+html.light .bg-gray-800 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+html.light .border-gray-800,
+html.light .border-gray-700,
+html.light .border-gray-700\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: #111827 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+html.light .hover\:bg-gray-800:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .hover\:text-white:hover {
+  color: #111827 !important;
+}
+
+html.light .bg-gray-800\/50 {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.canvas-grid-bg {
+  background-size: 30px 30px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}

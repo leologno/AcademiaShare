@@ -1,0 +1,10 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+.env
+.mongo_uri.tmp
+server/.mongo_uri.tmp
+CREDENTIALS_AND_GUIDE.md
+.DS_Store
+*.log
