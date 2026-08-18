@@ -21,7 +21,7 @@ const uploadNote = async (req, res) => {
       }
 
       const isTeacher = classroom.teacher.toString() === req.user._id.toString();
-      const isStudent = classroom.students.includes(req.user._id.toString());
+      const isStudent = classroom.students.some(s => s.toString() === req.user._id.toString());
       const cr = classroom.classRepresentatives.find(r => r.student.toString() === req.user._id.toString());
       const isCR = !!cr;
       const canShare = isTeacher || (isCR && cr.powers.canShareNotes);
@@ -114,7 +114,7 @@ const getNoteById = async (req, res) => {
         return res.status(404).json({ message: 'Classroom not found for this study material' });
       }
       const isTeacher = classroom.teacher.toString() === req.user._id.toString();
-      const isStudent = classroom.students.includes(req.user._id.toString());
+      const isStudent = classroom.students.some(s => s.toString() === req.user._id.toString());
       const isAdmin = req.user.role === 'Admin' || req.user.role === 'SubAdmin';
       
       if (!isTeacher && !isStudent && !isAdmin) {

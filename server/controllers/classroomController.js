@@ -98,7 +98,7 @@ exports.joinClassroom = async (req, res) => {
     }
 
     // Check if user is already a student in the classroom
-    if (classroom.students.includes(req.user.id)) {
+    if (classroom.students.some(s => s.toString() === req.user.id)) {
       return res.status(400).json({ message: 'You have already joined this classroom.' });
     }
 
@@ -134,7 +134,7 @@ exports.getClassroomById = async (req, res) => {
 
     // Verify membership: user must be teacher or student
     const isTeacher = classroom.teacher._id.toString() === req.user.id;
-    const isStudent = classroom.students.some(s => s._id.toString() === req.user.id);
+    const isStudent = classroom.students.some(s => (s._id || s).toString() === req.user.id);
     const isAdmin = req.user.role === 'Admin' || req.user.role === 'SubAdmin';
 
     if (!isTeacher && !isStudent && !isAdmin) {
@@ -229,7 +229,7 @@ exports.shareNote = async (req, res) => {
     }
 
     // Check if note already shared
-    if (classroom.sharedNotes.includes(noteId)) {
+    if (classroom.sharedNotes.some(n => n.toString() === noteId)) {
       return res.status(400).json({ message: 'This note is already shared with this classroom' });
     }
 
@@ -281,7 +281,7 @@ exports.setRepresentative = async (req, res) => {
     }
 
     // Student must be in the class
-    if (!classroom.students.includes(studentId)) {
+    if (!classroom.students.some(s => s.toString() === studentId)) {
       return res.status(400).json({ message: 'User is not enrolled in this classroom.' });
     }
 
@@ -394,7 +394,7 @@ exports.addAnnouncementComment = async (req, res) => {
 
     // Verify membership
     const isTeacher = classroom.teacher.toString() === req.user.id;
-    const isStudent = classroom.students.includes(req.user.id);
+    const isStudent = classroom.students.some(s => s.toString() === req.user.id);
     const isAdmin = req.user.role === 'Admin' || req.user.role === 'SubAdmin';
 
     if (!isTeacher && !isStudent && !isAdmin) {
@@ -494,7 +494,15 @@ exports.startMeeting = async (req, res) => {
     };
 
     await classroom.save();
-    res.json(classroom);
+    const populated = await Classroom.findById(classroom._id)
+      .populate('teacher', 'username email')
+      .populate('students', 'username email')
+      .populate('classRepresentatives.student', 'username email')
+      .populate({
+        path: 'sharedNotes',
+        populate: { path: 'uploader', select: 'username' }
+      });
+    res.json(populated);
   } catch (err) {
     console.error('Error starting classroom meeting:', err);
     res.status(500).json({ message: 'Server error starting meeting' });
@@ -526,7 +534,15 @@ exports.endMeeting = async (req, res) => {
     };
 
     await classroom.save();
-    res.json(classroom);
+    const populated = await Classroom.findById(classroom._id)
+      .populate('teacher', 'username email')
+      .populate('students', 'username email')
+      .populate('classRepresentatives.student', 'username email')
+      .populate({
+        path: 'sharedNotes',
+        populate: { path: 'uploader', select: 'username' }
+      });
+    res.json(populated);
   } catch (err) {
     console.error('Error ending classroom meeting:', err);
     res.status(500).json({ message: 'Server error ending meeting' });
