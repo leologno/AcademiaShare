@@ -49,6 +49,16 @@ app.use('/api/interactions', interactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/classrooms', classroomRoutes);
 
+// Root landing route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'AcademiaShare API Server is running live.',
+    status: 'online',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Simple status route
 app.get('/api/status', (req, res) => {
   res.json({ status: 'running', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
