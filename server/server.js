@@ -49,19 +49,31 @@ app.use('/api/interactions', interactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/classrooms', classroomRoutes);
 
+let lastDbError = null;
+
 // Root landing route
 app.get('/', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
   res.json({
     message: 'AcademiaShare API Server is running live.',
     status: 'online',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    database: isConnected ? 'connected' : 'disconnected',
+    mongoUriProvided: Boolean(process.env.MONGO_URI),
+    isCloudDatabase: Boolean(MONGO_URI && MONGO_URI.startsWith('mongodb+srv://')),
+    ...(lastDbError && !isConnected ? { dbError: lastDbError } : {}),
     timestamp: new Date().toISOString(),
   });
 });
 
 // Simple status route
 app.get('/api/status', (req, res) => {
-  res.json({ status: 'running', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
+  const isConnected = mongoose.connection.readyState === 1;
+  res.json({ 
+    status: 'running', 
+    database: isConnected ? 'connected' : 'disconnected',
+    mongoUriProvided: Boolean(process.env.MONGO_URI),
+    ...(lastDbError && !isConnected ? { dbError: lastDbError } : {})
+  });
 });
 
 const activeMeetings = {};
@@ -391,26 +403,25 @@ const seedDatabase = async () => {
 
 // Database Connection
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/studynotes';
+const rawMongoUri = process.env.MONGO_URI ? process.env.MONGO_URI.trim().replace(/^["']|["']$/g, '') : '';
+const MONGO_URI = rawMongoUri || 'mongodb://127.0.0.1:27017/studynotes';
 
 console.log(`Attempting to connect to MongoDB: ${MONGO_URI.replace(/:([^:@]{1,})@/, ':****@')}`);
 
-mongoose
-  .connect(MONGO_URI, { 
-    serverSelectionTimeoutMS: 15000,
-    connectTimeoutMS: 15000,
-  })
-  .then(async () => {
+const connectWithRetry = async () => {
+  try {
+    await mongoose.connect(MONGO_URI, { 
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+    });
+    lastDbError = null;
     console.log('MongoDB connection established successfully.');
     try {
       fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), MONGO_URI);
     } catch (e) {}
     await seedDatabase();
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch(async (err) => {
+  } catch (err) {
+    lastDbError = err.message;
     console.error('MongoDB connection failed with error:', err.message);
     
     // Only attempt memory server fallback for local development
@@ -424,21 +435,25 @@ mongoose
         });
         const mongoUri = mongoServer.getUri();
         await mongoose.connect(mongoUri);
+        lastDbError = null;
         console.log(`In-memory MongoDB database started successfully: ${mongoUri}`);
         try {
           fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), mongoUri);
         } catch (e) {}
         await seedDatabase();
-        server.listen(PORT, () => {
-          console.log(`Server running on port ${PORT}`);
-        });
         return;
       } catch (memErr) {
         console.error('Failed to launch in-memory MongoDB server:', memErr.message);
       }
+    } else {
+      // For cloud MongoDB (Atlas), attempt reconnection in background every 10 seconds
+      setTimeout(connectWithRetry, 10000);
     }
+  }
+};
 
-    server.listen(PORT, () => {
-      console.log(`Server started in offline mode on port ${PORT} (Database disconnected)`);
-    });
+connectWithRetry().finally(() => {
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
   });
+});
