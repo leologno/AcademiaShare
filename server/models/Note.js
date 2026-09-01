@@ -14,6 +14,10 @@ const NoteSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  cloudinaryId: {
+    type: String,
+    default: null,
+  },
   fileType: {
     type: String,
   },

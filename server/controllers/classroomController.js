@@ -151,7 +151,7 @@ exports.getClassroomById = async (req, res) => {
 // Add announcement to classroom
 exports.addAnnouncement = async (req, res) => {
   try {
-    const { text } = req.body;
+    const text = req.body.text || req.body.content || req.body.announcementText;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ message: 'Valid announcement text is required' });

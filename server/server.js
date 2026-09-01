@@ -45,6 +45,7 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/interaction', interactionRoutes);
+app.use('/api/interactions', interactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/classrooms', classroomRoutes);
 
@@ -76,7 +77,7 @@ io.on('connection', (socket) => {
 
   // Sending a chat message
   socket.on('chat:send', async (data) => {
-    const { sender, recipient, message, attachmentUrl, attachmentType, attachmentName } = data;
+    const { sender, recipient, message, attachmentUrl, attachmentType, attachmentName, cloudinaryId } = data;
     try {
       if (!sender || !recipient || (!message && !attachmentUrl)) return;
 
@@ -88,6 +89,7 @@ io.on('connection', (socket) => {
         attachmentUrl: attachmentUrl || '',
         attachmentType: attachmentType || '',
         attachmentName: attachmentName || '',
+        cloudinaryId: cloudinaryId || null,
       });
       const populatedChat = await Chat.findById(newChat._id)
         .populate('sender', 'username')
@@ -339,6 +341,9 @@ const seedDatabase = async () => {
         email: 'admin@academia.edu',
         password: hashSHA256('admin123'),
         role: 'Admin',
+        title: 'IT Staff',
+        profession: 'Administrator',
+        department: 'Information Technology',
         isApproved: true,
       });
 
@@ -348,6 +353,9 @@ const seedDatabase = async () => {
         email: 'teacher@academia.edu',
         password: hashSHA256('teacher123'),
         role: 'Teacher',
+        title: 'Professor',
+        profession: 'Academic',
+        department: 'Computer Science',
         isApproved: true,
       });
 
@@ -357,6 +365,10 @@ const seedDatabase = async () => {
         email: 'student@academia.edu',
         password: hashSHA256('student123'),
         role: 'Student',
+        title: 'Student',
+        profession: 'Student',
+        department: 'Computer Science',
+        year: 'Freshman',
         isApproved: true,
       });
 
@@ -385,7 +397,11 @@ mongoose
     console.error('Local MongoDB connection failed! Attempting to launch in-memory MongoDB server fallback...');
     try {
       const { MongoMemoryServer } = require('mongodb-memory-server');
-      const mongoServer = await MongoMemoryServer.create();
+      const mongoServer = await MongoMemoryServer.create({
+        binary: {
+          version: '4.4.29',
+        },
+      });
       const mongoUri = mongoServer.getUri();
       await mongoose.connect(mongoUri);
       console.log(`In-memory MongoDB database started successfully: ${mongoUri}`);

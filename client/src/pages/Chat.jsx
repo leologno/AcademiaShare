@@ -160,6 +160,7 @@ const Chat = () => {
       let attachmentUrl = '';
       let attachmentType = '';
       let attachmentName = '';
+      let cloudinaryId = null;
 
       if (selectedFile) {
         const formData = new FormData();
@@ -172,6 +173,7 @@ const Chat = () => {
         attachmentUrl = data.fileUrl;
         attachmentType = data.fileType;
         attachmentName = data.fileName;
+        cloudinaryId = data.cloudinaryId || null;
       }
 
       // Emit chat message event to Socket.IO server
@@ -182,6 +184,7 @@ const Chat = () => {
         attachmentUrl,
         attachmentType,
         attachmentName,
+        cloudinaryId,
       });
 
       setTypedMessage('');

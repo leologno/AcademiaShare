@@ -94,7 +94,7 @@ const addNoteToFolder = async (req, res) => {
     }
 
     // Add note if not already present
-    if (!folder.notes.some(n => n.toString() === noteId)) {
+    if (!folder.notes.some(n => n.toString() === noteId.toString())) {
       folder.notes.push(noteId);
       await folder.save();
     }

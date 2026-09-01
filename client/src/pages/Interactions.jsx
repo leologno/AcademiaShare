@@ -342,7 +342,7 @@ const Interactions = () => {
                   <button
                     onClick={() => handleUpvote(q._id)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-semibold transition ${
-                      q.upvotes?.includes(user._id)
+                      q.upvotes?.some(u => (u._id || u).toString() === user._id.toString())
                         ? 'bg-indigo-600/15 border-indigo-500/25 text-indigo-400'
                         : 'bg-gray-900 border border-gray-850 text-gray-400 hover:text-white'
                     }`}

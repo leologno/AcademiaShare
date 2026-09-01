@@ -15,8 +15,12 @@ export const AuthProvider = ({ children }) => {
     let newSocket = null;
     if (user) {
       // Connect socket
-      const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
-      newSocket = io(socketUrl);
+      const socketUrl = import.meta.env.VITE_API_URL 
+        ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+        : (window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin);
+      newSocket = io(socketUrl, {
+        transports: ['websocket', 'polling'],
+      });
       
       // Auto-rejoin user room on connection/reconnection
       newSocket.on('connect', () => {

@@ -22,6 +22,7 @@ router.post('/', protect, createClassroom);
 router.post('/join', protect, joinClassroom);
 router.get('/:id', protect, getClassroomById);
 router.post('/:id/announcement', protect, addAnnouncement);
+router.post('/:id/announcements', protect, addAnnouncement);
 router.post('/:id/share', protect, shareNote);
 
 // Class Representatives Management

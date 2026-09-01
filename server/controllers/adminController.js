@@ -134,14 +134,53 @@ const deleteUser = async (req, res) => {
       return res.status(400).json({ message: 'Cannot delete/ban an Admin account' });
     }
 
+    // Clean up user's avatar if stored
+    const { deleteFromCloudinary } = require('../config/cloudinary');
+    if (user.cloudinaryId) {
+      await deleteFromCloudinary(user.cloudinaryId, 'image');
+    } else if (user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
+      const avatarPath = path.join(__dirname, '..', user.profilePicture);
+      if (fs.existsSync(avatarPath)) {
+        try { fs.unlinkSync(avatarPath); } catch (e) {}
+      }
+    }
+
     // Find and delete notes uploaded by user
     const notes = await Note.find({ uploader: user._id });
     for (let note of notes) {
-      const filePath = path.join(__dirname, '..', note.fileUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (note.cloudinaryId) {
+        await deleteFromCloudinary(note.cloudinaryId);
+      }
+      if (note.fileUrl && note.fileUrl.startsWith('/uploads/')) {
+        const filePath = path.join(__dirname, '..', note.fileUrl);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (e) {}
+        }
       }
     }
+    await Note.deleteMany({ uploader: user._id });
+
+    // Clean up classroom memberships
+    await Classroom.updateMany(
+      { students: user._id },
+      { $pull: { students: user._id } }
+    );
+    await Classroom.updateMany(
+      { 'classRepresentatives.student': user._id },
+      { $pull: { classRepresentatives: { student: user._id } } }
+    );
+
+    // Clean up interactions and notifications
+    const Interaction = require('../models/Interaction');
+    const Notification = require('../models/Notification');
+    await Interaction.deleteMany({
+      $or: [{ student: user._id }, { teacher: user._id }]
+    });
+    await Notification.deleteMany({
+      $or: [{ recipient: user._id }, { sender: user._id }]
+    });
 
     await User.findByIdAndDelete(user._id);
     res.json({ message: 'User and all their uploaded notes deleted successfully' });

@@ -334,7 +334,7 @@ const AdminPanel = () => {
                     </div>
                   </div>
 
-                  {currentUser?.role === 'Admin' && (
+                  {(currentUser?.role === 'Admin' || currentUser?.role === 'SubAdmin') && (
                     <div className="flex gap-2 border-t border-gray-900 mt-4 pt-3">
                       <button
                         onClick={() => handleRejectUser(usr._id, usr.username)}

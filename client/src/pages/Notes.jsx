@@ -175,7 +175,9 @@ const Notes = () => {
   };
 
   const isBookmarked = (noteId) => {
-    return userBookmarks.includes(noteId);
+    if (!noteId || !userBookmarks) return false;
+    const targetId = (noteId._id || noteId).toString();
+    return userBookmarks.some((b) => (b._id || b).toString() === targetId);
   };
 
   return (

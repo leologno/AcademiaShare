@@ -3,6 +3,11 @@ const User = require('../models/User');
 const Classroom = require('../models/Classroom');
 const fs = require('fs');
 const path = require('path');
+const {
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require('../config/cloudinary');
 
 const uploadNote = async (req, res) => {
   try {
@@ -34,10 +39,36 @@ const uploadNote = async (req, res) => {
       }
     }
 
+    let fileUrl = '';
+    let cloudinaryId = null;
+
+    if (isCloudinaryConfigured()) {
+      // Direct stream upload to Cloudinary CDN
+      const safeName = path.parse(req.file.originalname || 'note').name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'studynotes/materials',
+        public_id: `${Date.now()}-${safeName}`,
+        resource_type: 'auto',
+      });
+      fileUrl = uploadResult.url;
+      cloudinaryId = uploadResult.publicId;
+    } else {
+      // Local disk fallback
+      const uploadDir = path.join(__dirname, '../uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filename = `${Date.now()}-${req.file.originalname}`;
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+      fileUrl = `/uploads/${filename}`;
+    }
+
     const note = await Note.create({
       title,
       description,
-      fileUrl: `/uploads/${req.file.filename}`,
+      fileUrl,
+      cloudinaryId,
       fileType: req.file.mimetype,
       fileSize: req.file.size,
       category: category || 'General',
@@ -54,7 +85,7 @@ const uploadNote = async (req, res) => {
 
     res.status(201).json(note);
   } catch (error) {
-    console.error(error);
+    console.error('Error during note upload:', error);
     res.status(500).json({ message: 'Server error during note upload' });
   }
 };
@@ -70,12 +101,18 @@ const getApprovedNotes = async (req, res) => {
     };
 
     if (!isAdmin) {
-      const usersInDept = await User.find({ department: req.user.department }).select('_id');
+      const userDept = req.user.department || 'Computer Science';
+      const usersInDept = await User.find({
+        $or: [
+          { department: userDept },
+          { role: { $in: ['Admin', 'SubAdmin'] } }
+        ]
+      }).select('_id');
       const deptUserIds = usersInDept.map(u => u._id);
       query.uploader = { $in: deptUserIds };
     }
 
-    if (category) {
+    if (category && category !== 'All') {
       query.category = category;
     }
 
@@ -124,7 +161,10 @@ const getNoteById = async (req, res) => {
       // Enforce department boundary for global notes
       const isAdmin = req.user.role === 'Admin' || req.user.role === 'SubAdmin';
       const uploader = await User.findById(note.uploader);
-      if (!isAdmin && uploader && uploader.department !== req.user.department) {
+      const userDept = req.user.department || 'Computer Science';
+      const uploaderDept = uploader ? (uploader.department || 'Computer Science') : 'Computer Science';
+      const isUploaderAdmin = uploader && (uploader.role === 'Admin' || uploader.role === 'SubAdmin');
+      if (!isAdmin && !isUploaderAdmin && uploader && uploaderDept !== userDept) {
         return res.status(403).json({ message: 'Access denied. This material belongs to another department.' });
       }
     }
@@ -167,7 +207,7 @@ const rateNote = async (req, res) => {
 
 const commentNote = async (req, res) => {
   try {
-    const { text } = req.body;
+    const text = req.body.text || req.body.comment;
     if (!text) {
       return res.status(400).json({ message: 'Comment text is required' });
     }
@@ -207,16 +247,16 @@ const bookmarkNote = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    const index = user.bookmarks.indexOf(note._id);
+    const index = user.bookmarks.findIndex(b => b.toString() === note._id.toString());
 
     if (index > -1) {
       // Remove bookmark
       user.bookmarks.splice(index, 1);
-      note.bookmarksCount = Math.max(0, note.bookmarksCount - 1);
+      note.bookmarksCount = Math.max(0, (note.bookmarksCount || 1) - 1);
     } else {
       // Add bookmark
       user.bookmarks.push(note._id);
-      note.bookmarksCount += 1;
+      note.bookmarksCount = (note.bookmarksCount || 0) + 1;
     }
 
     await user.save();
@@ -245,10 +285,17 @@ const deleteNote = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete this note' });
     }
 
-    // Remove file locally
-    const filePath = path.join(__dirname, '..', note.fileUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete from Cloudinary if hosted there
+    if (note.cloudinaryId) {
+      await deleteFromCloudinary(note.cloudinaryId);
+    }
+
+    // Remove file locally if stored in /uploads/
+    if (note.fileUrl && note.fileUrl.startsWith('/uploads/')) {
+      const filePath = path.join(__dirname, '..', note.fileUrl);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) {}
+      }
     }
 
     await Note.findByIdAndDelete(note._id);

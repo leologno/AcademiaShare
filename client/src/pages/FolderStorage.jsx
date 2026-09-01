@@ -20,10 +20,11 @@ const FolderStorage = () => {
 
   // Fetch current folder contents
   const fetchContents = async () => {
-    if (!currentFolderId && user && user.department) {
+    if (!currentFolderId && user) {
+      const deptName = user.department || 'Computer Science';
       setFolders([{
         _id: 'dept-root',
-        name: `${user.department} Department`,
+        name: `${deptName} Department`,
         isDeptFolder: true,
       }]);
       setNotes([]);

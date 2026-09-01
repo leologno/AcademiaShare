@@ -1,5 +1,8 @@
+const path = require('path');
+const fs = require('fs');
 const Chat = require('../models/Chat');
 const User = require('../models/User');
+const { deleteFromCloudinary } = require('../config/cloudinary');
 
 const getChatHistory = async (req, res) => {
   try {
@@ -62,11 +65,22 @@ const deleteChatMessage = async (req, res) => {
       return res.status(403).json({ message: 'You can only delete your own messages.' });
     }
 
+    // Clean up attachment from Cloudinary or local disk
+    if (message.cloudinaryId) {
+      await deleteFromCloudinary(message.cloudinaryId);
+    } else if (message.attachmentUrl && message.attachmentUrl.startsWith('/uploads/')) {
+      const filePath = path.join(__dirname, '..', message.attachmentUrl);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) {}
+      }
+    }
+
     message.isDeleted = true;
     message.message = 'This message was deleted.';
     message.attachmentUrl = '';
     message.attachmentName = '';
     message.attachmentType = '';
+    message.cloudinaryId = null;
     await message.save();
 
     res.json({ message: 'Message deleted successfully', chat: message });

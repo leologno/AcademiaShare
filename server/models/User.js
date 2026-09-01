@@ -31,6 +31,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  cloudinaryId: {
+    type: String,
+    default: null,
+  },
   bio: {
     type: String,
     default: '',

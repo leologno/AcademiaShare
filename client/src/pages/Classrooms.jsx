@@ -820,7 +820,7 @@ const Classrooms = () => {
       formData.append('classroomId', selectedClassroom._id);
       formData.append('noteFile', uploadFile);
 
-      await api.post('/notes', formData, {
+      await api.post('/notes/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

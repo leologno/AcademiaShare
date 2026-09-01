@@ -20,15 +20,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Multer Config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
+// Multer Config (Memory storage for direct streaming to Cloudinary or local fallback)
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedExtensions = ['.pdf', '.docx', '.jpg', '.jpeg', '.png'];
@@ -49,6 +42,7 @@ const upload = multer({
 
 // Routes
 router.post('/upload', protect, upload.single('noteFile'), uploadNote);
+router.post('/', protect, upload.single('noteFile'), uploadNote);
 router.get('/', protect, getApprovedNotes);
 router.get('/:id', protect, getNoteById);
 router.post('/:id/rate', protect, rateNote);

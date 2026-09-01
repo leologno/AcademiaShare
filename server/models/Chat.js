@@ -28,6 +28,10 @@ const ChatSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  cloudinaryId: {
+    type: String,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

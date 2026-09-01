@@ -1,6 +1,13 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
+const {
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} = require('../config/cloudinary');
 
 const hashSHA256 = (pw) => crypto.createHash('sha256').update(pw).digest('hex');
 
@@ -79,6 +86,14 @@ const authUser = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        department: user.department || 'Computer Science',
+        title: user.title || '',
+        profession: user.profession || '',
+        year: user.year || '',
+        bio: user.bio || '',
+        profilePicture: user.profilePicture || '',
+        bookmarks: user.bookmarks || [],
+        focusSessions: user.focusSessions || 0,
         token: generateToken(user._id),
       });
     } else {
@@ -174,7 +189,45 @@ const uploadAvatar = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.profilePicture = `/uploads/${req.file.filename}`;
+    let profilePicture = '';
+    let cloudinaryId = null;
+
+    if (isCloudinaryConfigured()) {
+      // Remove old avatar from Cloudinary if exists
+      if (user.cloudinaryId) {
+        await deleteFromCloudinary(user.cloudinaryId, 'image');
+      }
+      const safeName = path.parse(req.file.originalname || 'avatar').name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const uploadResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'studynotes/avatars',
+        public_id: `avatar-${Date.now()}-${safeName}`,
+        resource_type: 'image',
+      });
+      profilePicture = uploadResult.url;
+      cloudinaryId = uploadResult.publicId;
+    } else {
+      // Local disk fallback
+      const uploadDir = path.join(__dirname, '../uploads');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      // Remove old local file if present
+      if (user.profilePicture && user.profilePicture.startsWith('/uploads/')) {
+        const oldFilePath = path.join(__dirname, '..', user.profilePicture);
+        if (fs.existsSync(oldFilePath)) {
+          try { fs.unlinkSync(oldFilePath); } catch (e) {}
+        }
+      }
+      const filename = `avatar-${Date.now()}-${req.file.originalname}`;
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+      profilePicture = `/uploads/${filename}`;
+    }
+
+    user.profilePicture = profilePicture;
+    if (cloudinaryId) {
+      user.cloudinaryId = cloudinaryId;
+    }
     await user.save();
 
     res.json({
@@ -182,7 +235,7 @@ const uploadAvatar = async (req, res) => {
       message: 'Avatar uploaded successfully',
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error uploading avatar:', error);
     res.status(500).json({ message: 'Server error during avatar upload' });
   }
 };

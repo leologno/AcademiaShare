@@ -4,7 +4,8 @@ const Note = require('../models/Note');
 
 const askQuestion = async (req, res) => {
   try {
-    const { teacherId, questionText, noteId } = req.body;
+    const { teacherId, noteId } = req.body;
+    const questionText = req.body.questionText || req.body.question;
     if (!teacherId || !questionText) {
       return res.status(400).json({ message: 'Teacher ID and question text are required' });
     }
@@ -61,7 +62,7 @@ const getQuestionsForUser = async (req, res) => {
 
 const answerQuestion = async (req, res) => {
   try {
-    const { answerText } = req.body;
+    const answerText = req.body.answerText || req.body.answer;
     if (!answerText) {
       return res.status(400).json({ message: 'Answer text is required' });
     }
@@ -127,7 +128,7 @@ const upvoteQuestion = async (req, res) => {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    const userIdx = interaction.upvotes.indexOf(req.user._id);
+    const userIdx = interaction.upvotes.findIndex(u => u.toString() === req.user._id.toString());
     if (userIdx > -1) {
       // Toggle off
       interaction.upvotes.splice(userIdx, 1);
