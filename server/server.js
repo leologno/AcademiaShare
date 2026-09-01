@@ -393,37 +393,52 @@ const seedDatabase = async () => {
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/studynotes';
 
+console.log(`Attempting to connect to MongoDB: ${MONGO_URI.replace(/:([^:@]{1,})@/, ':****@')}`);
+
 mongoose
-  .connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+  .connect(MONGO_URI, { 
+    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS: 15000,
+  })
   .then(async () => {
     console.log('MongoDB connection established successfully.');
-    fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), MONGO_URI);
+    try {
+      fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), MONGO_URI);
+    } catch (e) {}
     await seedDatabase();
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   })
   .catch(async (err) => {
-    console.error('Local MongoDB connection failed! Attempting to launch in-memory MongoDB server fallback...');
-    try {
-      const { MongoMemoryServer } = require('mongodb-memory-server');
-      const mongoServer = await MongoMemoryServer.create({
-        binary: {
-          version: '4.4.29',
-        },
-      });
-      const mongoUri = mongoServer.getUri();
-      await mongoose.connect(mongoUri);
-      console.log(`In-memory MongoDB database started successfully: ${mongoUri}`);
-      fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), mongoUri);
-      await seedDatabase();
-      server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-      });
-    } catch (memErr) {
-      console.error('Failed to launch in-memory MongoDB server:', memErr);
-      server.listen(PORT, () => {
-        console.log(`Server started in offline/fallback mode on port ${PORT} (Database disconnected)`);
-      });
+    console.error('MongoDB connection failed with error:', err.message);
+    
+    // Only attempt memory server fallback for local development
+    const isLocal = MONGO_URI.includes('127.0.0.1') || MONGO_URI.includes('localhost');
+    if (isLocal) {
+      console.log('Attempting to launch in-memory MongoDB server fallback for local execution...');
+      try {
+        const { MongoMemoryServer } = require('mongodb-memory-server');
+        const mongoServer = await MongoMemoryServer.create({
+          binary: { version: '4.4.29' },
+        });
+        const mongoUri = mongoServer.getUri();
+        await mongoose.connect(mongoUri);
+        console.log(`In-memory MongoDB database started successfully: ${mongoUri}`);
+        try {
+          fs.writeFileSync(path.join(__dirname, '.mongo_uri.tmp'), mongoUri);
+        } catch (e) {}
+        await seedDatabase();
+        server.listen(PORT, () => {
+          console.log(`Server running on port ${PORT}`);
+        });
+        return;
+      } catch (memErr) {
+        console.error('Failed to launch in-memory MongoDB server:', memErr.message);
+      }
     }
+
+    server.listen(PORT, () => {
+      console.log(`Server started in offline mode on port ${PORT} (Database disconnected)`);
+    });
   });
